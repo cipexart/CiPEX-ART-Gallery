@@ -90,16 +90,68 @@ export default function App() {
   };
 
   // Core Collections State
-  const [artworks, setArtworks] = useState<Artwork[]>(INITIAL_ARTWORKS);
+  const [artworks, setArtworks] = useState<Artwork[]>(() => {
+    try {
+      const saved = localStorage.getItem('cipl_artworks');
+      return saved ? JSON.parse(saved) : INITIAL_ARTWORKS;
+    } catch (e) {
+      return INITIAL_ARTWORKS;
+    }
+  });
+
   const [artists, setArtists] = useState<Artist[]>(INITIAL_ARTISTS);
   const [customers, setCustomers] = useState<Customer[]>(() => {
     try {
-      const saved = localStorage.getItem('cipl_customers');
-      return saved ? JSON.parse(saved) : INITIAL_CUSTOMERS;
+      const savedCust = localStorage.getItem('cipl_customers');
+      let baseCust: Customer[] = savedCust ? JSON.parse(savedCust) : INITIAL_CUSTOMERS;
+      
+      // Merge all registered users into customers list so Admin always sees new signups
+      const savedUsers = localStorage.getItem('cipl_registered_users');
+      const regUsers: User[] = savedUsers ? JSON.parse(savedUsers) : [];
+
+      regUsers.forEach(u => {
+        if (u.role !== 'admin' && u.email) {
+          const exists = baseCust.some(c => c.email.toLowerCase() === u.email.toLowerCase());
+          if (!exists) {
+            baseCust.unshift({
+              id: u.id || `cust-${Date.now()}`,
+              nameAr: u.name || 'زائر جديد',
+              nameFr: u.name || 'Nouveau Visiteur',
+              avatar: u.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80',
+              cityAr: u.city || 'الدار البيضاء',
+              cityFr: u.city || 'Casablanca',
+              countryAr: 'المغرب',
+              countryFr: 'Maroc',
+              email: u.email,
+              phone: u.phone || '+212 600 000000',
+              totalPurchasesMAD: 0,
+              purchasesCount: 0,
+              favoriteArtists: ['محمد الجالي'],
+              favoriteStyles: ['تجريدي معاصر'],
+              budgetMAD: 50000,
+              lastContactDate: new Date().toISOString().slice(0, 10),
+              tags: ['عضو مسجل جديد', 'زائر مؤكد عبر المنصة'],
+              notesAr: u.bio || 'تم تسجيل الحساب عبر المنصة.',
+              notesFr: u.bio || 'Inscrit via la plateforme.'
+            });
+          }
+        }
+      });
+
+      return baseCust;
     } catch (e) {
       return INITIAL_CUSTOMERS;
     }
   });
+
+  // Save artworks to local storage whenever changed
+  useEffect(() => {
+    try {
+      localStorage.setItem('cipl_artworks', JSON.stringify(artworks));
+    } catch (e) {
+      console.error('Failed to save artworks to localStorage:', e);
+    }
+  }, [artworks]);
   const [deals, setDeals] = useState<Deal[]>(INITIAL_DEALS);
   const [offers, setOffers] = useState<Offer[]>(INITIAL_OFFERS);
   const [invoices, setInvoices] = useState<Invoice[]>(INITIAL_INVOICES);
