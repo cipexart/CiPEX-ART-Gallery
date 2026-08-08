@@ -146,6 +146,11 @@ export async function appendRowsToSpreadsheet(
       })
     });
 
+    if (res.status === 401) {
+      console.info(`[Google Sheets] Authorization token expired or unauthenticated for ${sheetName}. Data fallback saved locally & to Firestore.`);
+      return false;
+    }
+
     if (!res.ok) {
       // Try ensuring sheet tabs exist and retry once
       await ensureSheetTabsExist(accessToken, spreadsheetId);
@@ -161,6 +166,10 @@ export async function appendRowsToSpreadsheet(
       });
 
       if (!res.ok) {
+        if (res.status === 401) {
+          console.info(`[Google Sheets] Unauthorized on retry for ${sheetName}. Fallback active.`);
+          return false;
+        }
         console.warn(`Failed to append rows to ${sheetName} on retry:`, await res.text());
         return false;
       }
@@ -200,6 +209,11 @@ export async function updateSheetTabValues(
       })
     });
 
+    if (res.status === 401) {
+      console.info(`[Google Sheets] Authorization token expired or unauthenticated for ${sheetName}.`);
+      return false;
+    }
+
     if (!res.ok) {
       // Try ensuring sheet tabs exist and retry once
       await ensureSheetTabsExist(accessToken, spreadsheetId);
@@ -215,6 +229,7 @@ export async function updateSheetTabValues(
       });
 
       if (!res.ok) {
+        if (res.status === 401) return false;
         console.warn(`Failed to update sheet tab ${sheetName} on retry:`, await res.text());
         return false;
       }
