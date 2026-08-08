@@ -168,13 +168,11 @@ export const LoginView: React.FC<LoginViewProps> = ({
         const isDedicatedAdmin = googleEmail === TARGET_ADMIN_EMAIL.toLowerCase();
         const effectiveRole: UserRole = isDedicatedAdmin ? 'admin' : 'visitor';
 
-        if (selectedRole === 'admin' && !isDedicatedAdmin) {
-          setRoleNotice(
-            isAr 
-              ? 'تم دخولك كزائر، لأن صفة مدير المعرض مخصصة حصرياً للحساب artcipex@gmail.com' 
-              : 'Connecté comme Visiteur'
-          );
-        }
+        setRoleNotice(
+          isDedicatedAdmin 
+            ? (isAr ? 'تم التحقق بنجاح من حساب المدير الرئيسي (artcipex@gmail.com)' : 'Compte Admin verifié (artcipex@gmail.com)')
+            : (isAr ? `تم تسجيل الدخول بنجاح بحساب الزائر (${googleEmail})` : `Connecté en tant que Visiteur (${googleEmail})`)
+        );
 
         const newUser: User = {
           id: res.user.uid,
@@ -190,18 +188,33 @@ export const LoginView: React.FC<LoginViewProps> = ({
       }
     } catch (err: any) {
       console.error('Google login error', err);
-      // Fallback Dedicated Admin User for Preview
-      const fallbackUser: User = {
-        id: `usr-admin-fallback`,
-        name: isAr ? 'الفنان محمد الجالي (مدير المعرض الرئيسي)' : 'Mohamed El Gali (Admin)',
-        email: TARGET_ADMIN_EMAIL,
-        role: 'admin',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80'
-      };
-      await finalizeUserLogin(fallbackUser);
+      const errMsg = err?.message || '';
+      if (errMsg.includes('popup-closed-by-user')) {
+        setRoleNotice(isAr ? 'تم إغلاق نافذة تسجيل الدخول قبل إتمام العملية.' : 'Connexion annulée par l’utilisateur.');
+      } else if (errMsg.includes('unauthorized-domain')) {
+        setRoleNotice(isAr ? 'النطاق غير مصرح به في Firebase Console. يرجى إضافة cipexart.github.io إلى Authorized Domains في Firebase.' : 'Domaine non autorisé dans Firebase Console.');
+      } else {
+        setRoleNotice(
+          isAr 
+            ? `تعذر الاتصال بـ Google (${errMsg || 'يرجى التأكد من السماح بالنوافذ المنبثقة'}).`
+            : `Échec de connexion Google (${errMsg}).`
+        );
+      }
     } finally {
       setIsGoogleLoading(false);
     }
+  };
+
+  // Explicit Demo Admin Login for local/offline testing
+  const handleDemoAdminLogin = async () => {
+    const fallbackUser: User = {
+      id: `usr-admin-demo`,
+      name: isAr ? 'الفنان محمد الجالي (معاينة تجريبية)' : 'Mohamed El Gali (Mode Demo)',
+      email: TARGET_ADMIN_EMAIL,
+      role: 'admin',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80'
+    };
+    await finalizeUserLogin(fallbackUser);
   };
 
   return (
@@ -375,6 +388,17 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </svg>
               <span>{isGoogleLoading ? (isAr ? 'جاري الاتصال بحساب Google...' : 'Connexion à Google...') : (isAr ? 'تسجيل الدخول باستخدام حساب Google' : 'Se connecter avec Google')}</span>
             </button>
+
+            {/* Quick Demo Preview Option for Local Testing */}
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={handleDemoAdminLogin}
+                className="text-[11px] text-slate-400 hover:text-amber-400 font-bold underline transition-all"
+              >
+                {isAr ? '⚡ الدخول السريع بمعاينة الأدمن المحلية (بدون Google)' : '⚡ Mode Démo Administrateur (Sans Google)'}
+              </button>
+            </div>
 
             {/* Explanation Boxes */}
             <div className="space-y-3 pt-2 text-xs">
