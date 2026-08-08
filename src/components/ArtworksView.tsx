@@ -11,7 +11,8 @@ import {
   CheckCircle2,
   Phone,
   User as UserIcon,
-  MessageSquare
+  MessageSquare,
+  Palette
 } from 'lucide-react';
 import { Artwork, Artist, Language, UserRole } from '../types';
 import { getTranslation, formatCurrency } from '../i18n/translations';
@@ -258,119 +259,152 @@ export const ArtworksView: React.FC<ArtworksViewProps> = ({
         </div>
       </div>
 
-      {/* Artworks Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredArtworks.map((item) => (
-          <div
-            key={item.id}
-            className="bg-white dark:bg-slate-900 rounded-3xl overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group"
-          >
-            {/* Image Thumbnail Container */}
-            <div className="relative aspect-[4/3] bg-slate-100 dark:bg-slate-950 overflow-hidden">
-              <img
-                src={item.primaryImage}
-                alt={item.titleAr}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
-              <span className={`absolute top-3 left-3 rtl:right-3 rtl:left-auto px-3 py-1 rounded-full text-[10px] font-black border ${getBadgeColor(item.status)}`}>
-                {getTranslation(lang, `status${item.status.charAt(0).toUpperCase() + item.status.slice(1)}` as any)}
-              </span>
+      {/* Empty State */}
+      {filteredArtworks.length === 0 ? (
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border border-slate-200/80 dark:border-slate-800 shadow-sm max-w-2xl mx-auto space-y-4 my-8">
+          <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto border border-amber-500/20">
+            <Palette className="w-8 h-8" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+            {isAr ? 'لا توجد لوحات معروضة حالياً' : 'Aucune œuvre disponible pour le moment'}
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+            {isAr 
+              ? 'سيقوم مدير المعرض بنشر الأعمال الفنية والأصيلة للفنان محمد الجالي فور إضافتها. يرجى إعادة الزيارة قريباً.' 
+              : 'Le directeur de la galerie publiera les œuvres d’art de Mohamed El Gali dès leur ajout. Veuillez revenir bientôt.'}
+          </p>
+          {userRole === 'admin' && (
+            <button
+              onClick={() => {
+                setEditingArtwork(null);
+                setTitleAr('');
+                setTitleFr('');
+                setDescriptionAr('');
+                setDescriptionFr('');
+                setIsAddModalOpen(true);
+              }}
+              className="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-600/20 inline-flex items-center gap-2 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{isAr ? 'إضافة أول لوحة الآن (مدير)' : 'Ajouter la première œuvre'}</span>
+            </button>
+          )}
+        </div>
+      ) : (
+        /* Artworks Cards Grid */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredArtworks.map((item) => (
+            <div
+              key={item.id}
+              className="bg-white dark:bg-slate-900 rounded-3xl overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group"
+            >
+              {/* Image Thumbnail Container */}
+              <div className="relative aspect-[4/3] bg-slate-100 dark:bg-slate-950 overflow-hidden">
+                <img
+                  src={item.primaryImage}
+                  alt={item.titleAr}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <span className={`absolute top-3 left-3 rtl:right-3 rtl:left-auto px-3 py-1 rounded-full text-[10px] font-black border ${getBadgeColor(item.status)}`}>
+                  {getTranslation(lang, `status${item.status.charAt(0).toUpperCase() + item.status.slice(1)}` as any)}
+                </span>
 
-              {/* Hover Quick Action Buttons */}
-              <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-xs">
-                <button
-                  onClick={() => onOpenArtworkModal(item)}
-                  className="bg-white text-slate-900 p-2.5 rounded-full hover:bg-indigo-600 hover:text-white transition-colors shadow-lg"
-                  title={getTranslation(lang, 'artworkDetails')}
-                >
-                  <Eye className="w-4 h-4" />
-                </button>
+                {/* Hover Quick Action Buttons */}
+                <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-xs">
+                  <button
+                    onClick={() => onOpenArtworkModal(item)}
+                    className="bg-white text-slate-900 p-2.5 rounded-full hover:bg-indigo-600 hover:text-white transition-colors shadow-lg"
+                    title={getTranslation(lang, 'artworkDetails')}
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
 
-                {userRole === 'admin' ? (
-                  <>
+                  {userRole === 'admin' ? (
+                    <>
+                      <button
+                        onClick={() => handleOpenEditArtwork(item)}
+                        className="bg-white text-amber-600 p-2.5 rounded-full hover:bg-amber-600 hover:text-white transition-colors shadow-lg"
+                        title={getTranslation(lang, 'edit')}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => onDeleteArtwork(item.id)}
+                        className="bg-white text-rose-600 p-2.5 rounded-full hover:bg-rose-600 hover:text-white transition-colors shadow-lg"
+                        title={getTranslation(lang, 'delete')}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
                     <button
-                      onClick={() => handleOpenEditArtwork(item)}
-                      className="bg-white text-amber-600 p-2.5 rounded-full hover:bg-amber-600 hover:text-white transition-colors shadow-lg"
-                      title={getTranslation(lang, 'edit')}
+                      onClick={() => setInquireArtwork(item)}
+                      className="bg-indigo-600 text-white p-2.5 rounded-full hover:bg-indigo-700 transition-colors shadow-lg flex items-center gap-1.5 px-4"
                     >
-                      <Edit className="w-4 h-4" />
+                      <Sparkles className="w-4 h-4 text-amber-300" />
+                      <span className="text-xs font-bold">{isAr ? 'طلب اقتناء' : 'Acquérir'}</span>
                     </button>
-                    <button
-                      onClick={() => onDeleteArtwork(item.id)}
-                      className="bg-white text-rose-600 p-2.5 rounded-full hover:bg-rose-600 hover:text-white transition-colors shadow-lg"
-                      title={getTranslation(lang, 'delete')}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </>
-                ) : (
+                  )}
+                </div>
+              </div>
+
+              {/* Content Details */}
+              <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+                <div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium mb-1">
+                    <span>{item.artworkNumber}</span>
+                    <span>{item.year}</span>
+                  </div>
+
+                  <h3 
+                    onClick={() => onOpenArtworkModal(item)}
+                    className="font-bold text-base text-slate-900 dark:text-white cursor-pointer hover:text-indigo-600 transition-colors line-clamp-1"
+                  >
+                    {isAr ? item.titleAr : item.titleFr}
+                  </h3>
+
+                  <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">
+                    {isAr ? item.artistNameAr : item.artistNameFr}
+                  </p>
+                </div>
+
+                <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <span>{isAr ? 'الخامة:' : 'Médium:'}</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      {isAr ? item.mediumAr : item.mediumFr}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>{isAr ? 'الأبعاد:' : 'Dimensions:'}</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      {item.dimensions.height}×{item.dimensions.width} cm
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <span className="text-xs text-slate-400">{getTranslation(lang, 'sellingPrice')}</span>
+                  <span className="font-black text-sm text-slate-900 dark:text-white">
+                    {formatCurrency(item.sellingPriceMAD, lang)}
+                  </span>
+                </div>
+
+                {/* Visitor Direct Button */}
+                {userRole === 'visitor' && (
                   <button
                     onClick={() => setInquireArtwork(item)}
-                    className="bg-indigo-600 text-white p-2.5 rounded-full hover:bg-indigo-700 transition-colors shadow-lg flex items-center gap-1.5 px-4"
+                    className="w-full py-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-600 hover:text-white text-indigo-600 dark:text-indigo-400 font-bold text-xs border border-indigo-200 dark:border-indigo-900 transition-all flex items-center justify-center gap-1.5"
                   >
-                    <Sparkles className="w-4 h-4 text-amber-300" />
-                    <span className="text-xs font-bold">{isAr ? 'طلب اقتناء' : 'Acquérir'}</span>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{getTranslation(lang, 'inquireArtwork')}</span>
                   </button>
                 )}
               </div>
             </div>
-
-            {/* Content Details */}
-            <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
-              <div>
-                <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium mb-1">
-                  <span>{item.artworkNumber}</span>
-                  <span>{item.year}</span>
-                </div>
-
-                <h3 
-                  onClick={() => onOpenArtworkModal(item)}
-                  className="font-bold text-base text-slate-900 dark:text-white cursor-pointer hover:text-indigo-600 transition-colors line-clamp-1"
-                >
-                  {isAr ? item.titleAr : item.titleFr}
-                </h3>
-
-                <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">
-                  {isAr ? item.artistNameAr : item.artistNameFr}
-                </p>
-              </div>
-
-              <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
-                <div className="flex items-center justify-between">
-                  <span>{isAr ? 'الخامة:' : 'Médium:'}</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    {isAr ? item.mediumAr : item.mediumFr}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>{isAr ? 'الأبعاد:' : 'Dimensions:'}</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    {item.dimensions.height}×{item.dimensions.width} cm
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
-                <span className="text-xs text-slate-400">{getTranslation(lang, 'sellingPrice')}</span>
-                <span className="font-black text-sm text-slate-900 dark:text-white">
-                  {formatCurrency(item.sellingPriceMAD, lang)}
-                </span>
-              </div>
-
-              {/* Visitor Direct Button */}
-              {userRole === 'visitor' && (
-                <button
-                  onClick={() => setInquireArtwork(item)}
-                  className="w-full py-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-600 hover:text-white text-indigo-600 dark:text-indigo-400 font-bold text-xs border border-indigo-200 dark:border-indigo-900 transition-all flex items-center justify-center gap-1.5"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>{getTranslation(lang, 'inquireArtwork')}</span>
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Visitor Inquiry Modal */}
       {inquireArtwork && (

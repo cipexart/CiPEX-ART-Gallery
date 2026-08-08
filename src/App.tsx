@@ -92,8 +92,21 @@ export default function App() {
   // Core Collections State
   const [artworks, setArtworks] = useState<Artwork[]>(() => {
     try {
+      // Force clean legacy mock cache once
+      if (!localStorage.getItem('cipl_clean_v3')) {
+        localStorage.removeItem('cipl_artworks');
+        localStorage.removeItem('cipl_deals');
+        localStorage.removeItem('cipl_offers');
+        localStorage.removeItem('cipl_invoices');
+        localStorage.removeItem('cipl_exhibitions');
+        localStorage.setItem('cipl_clean_v3', 'true');
+        return [];
+      }
       const saved = localStorage.getItem('cipl_artworks');
-      return saved ? JSON.parse(saved) : INITIAL_ARTWORKS;
+      if (!saved) return INITIAL_ARTWORKS;
+      const parsed: Artwork[] = JSON.parse(saved);
+      // Filter out old test artworks
+      return parsed.filter(a => !a.id.startsWith('artwk-') && !a.artworkNumber?.startsWith('ART-2024-00'));
     } catch (e) {
       return INITIAL_ARTWORKS;
     }
