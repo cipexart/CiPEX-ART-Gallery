@@ -115,8 +115,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
   };
 
   // Finalize Registration and Session Logging to Google Sheets & Firestore
-  const finalizeUserLogin = async (user: User, googleToken?: string) => {
-    // Store user in local registered users list for persistence across sessions
+  const finalizeUserLogin = (user: User, googleToken?: string) => {
+    let newCustObj: any = null;
+
+    // Store user in local registered users list for instant persistence across sessions
     try {
       const saved = localStorage.getItem('cipl_registered_users');
       const existing: User[] = saved ? JSON.parse(saved) : [];
@@ -133,7 +135,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
         const savedCust = localStorage.getItem('cipl_customers');
         const custs: any[] = savedCust ? JSON.parse(savedCust) : [];
         const cIdx = custs.findIndex((c: any) => c.email.toLowerCase() === user.email.toLowerCase());
-        const newCustObj = {
+        newCustObj = {
           id: user.id || `cust-${Date.now()}`,
           nameAr: user.name || 'زائر جديد',
           nameFr: user.name || 'Nouveau Visiteur',
@@ -161,40 +163,48 @@ export const LoginView: React.FC<LoginViewProps> = ({
           custs.unshift(newCustObj);
         }
         localStorage.setItem('cipl_customers', JSON.stringify(custs));
-
-        // Save to Firestore as well
-        await saveCustomerToFirestore(newCustObj);
       }
-
-      await saveUserToFirestore(user);
     } catch (e) {
-      console.warn('Failed to save user or customer locally/Firestore:', e);
+      console.warn('Failed to save user or customer locally:', e);
     }
 
-    // Log user registration if coming from verification/signup
-    if (authMode === 'signup') {
-      try {
-        await logNewUserToSheets(googleToken || null, user);
-      } catch (err) {
-        console.warn('Sheets registration log error:', err);
-      }
-    }
-
-    // Log session login event to Google Sheets
-    try {
-      await logSessionEventToSheets(googleToken || null, {
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        eventType: 'LOGIN',
-        timestamp: new Date().toLocaleString('ar-MA', { timeZone: 'Africa/Casablanca' }),
-        details: authMode === 'signup' ? 'تم تأكيد البريد الإلكتروني وإنشاء الحساب' : 'تسجيل دخول عادي'
-      });
-    } catch (err) {
-      console.warn('Sheets session login error:', err);
-    }
-
+    // Call onLogin immediately to instantly navigate user into app without waiting for network calls
     onLogin(user, googleToken);
+
+    // Asynchronous background persistence and logging
+    void (async () => {
+      try {
+        if (newCustObj) {
+          await saveCustomerToFirestore(newCustObj);
+        }
+        await saveUserToFirestore(user);
+      } catch (err) {
+        console.warn('Firestore sync warning:', err);
+      }
+
+      // Log user registration if coming from verification/signup
+      if (authMode === 'signup') {
+        try {
+          await logNewUserToSheets(googleToken || null, user);
+        } catch (err) {
+          console.warn('Sheets registration log error:', err);
+        }
+      }
+
+      // Log session login event to Google Sheets
+      try {
+        await logSessionEventToSheets(googleToken || null, {
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          eventType: 'LOGIN',
+          timestamp: new Date().toLocaleString('ar-MA', { timeZone: 'Africa/Casablanca' }),
+          details: authMode === 'signup' ? 'تم تأكيد البريد الإلكتروني وإنشاء الحساب' : 'تسجيل دخول عادي'
+        });
+      } catch (err) {
+        console.warn('Sheets session login error:', err);
+      }
+    })();
   };
 
   // Google Auth
