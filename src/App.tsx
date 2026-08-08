@@ -152,10 +152,45 @@ export default function App() {
       console.error('Failed to save artworks to localStorage:', e);
     }
   }, [artworks]);
-  const [deals, setDeals] = useState<Deal[]>(INITIAL_DEALS);
-  const [offers, setOffers] = useState<Offer[]>(INITIAL_OFFERS);
-  const [invoices, setInvoices] = useState<Invoice[]>(INITIAL_INVOICES);
-  const [exhibitions, setExhibitions] = useState<Exhibition[]>(INITIAL_EXHIBITIONS);
+
+  const [deals, setDeals] = useState<Deal[]>(() => {
+    try {
+      const saved = localStorage.getItem('cipl_deals');
+      return saved ? JSON.parse(saved) : INITIAL_DEALS;
+    } catch (e) { return INITIAL_DEALS; }
+  });
+
+  const [offers, setOffers] = useState<Offer[]>(() => {
+    try {
+      const saved = localStorage.getItem('cipl_offers');
+      return saved ? JSON.parse(saved) : INITIAL_OFFERS;
+    } catch (e) { return INITIAL_OFFERS; }
+  });
+
+  const [invoices, setInvoices] = useState<Invoice[]>(() => {
+    try {
+      const saved = localStorage.getItem('cipl_invoices');
+      return saved ? JSON.parse(saved) : INITIAL_INVOICES;
+    } catch (e) { return INITIAL_INVOICES; }
+  });
+
+  const [exhibitions, setExhibitions] = useState<Exhibition[]>(() => {
+    try {
+      const saved = localStorage.getItem('cipl_exhibitions');
+      return saved ? JSON.parse(saved) : INITIAL_EXHIBITIONS;
+    } catch (e) { return INITIAL_EXHIBITIONS; }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('cipl_customers', JSON.stringify(customers));
+      localStorage.setItem('cipl_deals', JSON.stringify(deals));
+      localStorage.setItem('cipl_offers', JSON.stringify(offers));
+      localStorage.setItem('cipl_invoices', JSON.stringify(invoices));
+      localStorage.setItem('cipl_exhibitions', JSON.stringify(exhibitions));
+    } catch (e) { console.error('Failed to save to localStorage:', e); }
+  }, [customers, deals, offers, invoices, exhibitions]);
+
   const [notifications, setNotifications] = useState<ActivityNotification[]>(INITIAL_NOTIFICATIONS);
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>(INITIAL_SYNC_LOGS);
   const [inventoryLocations, setInventoryLocations] = useState<InventoryLocation[]>(INITIAL_INVENTORY);
