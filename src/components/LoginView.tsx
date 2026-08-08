@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { Language, ThemeMode, User, UserRole } from '../types';
 import { getTranslation } from '../i18n/translations';
-import { signInWithGoogle } from '../lib/firebase';
+import { signInWithGoogle, saveUserToFirestore, saveCustomerToFirestore } from '../lib/firebase';
 import { 
   logNewUserToSheets, 
   logSessionEventToSheets, 
@@ -114,7 +114,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
     await finalizeUserLogin(newUser);
   };
 
-  // Finalize Registration and Session Logging to Google Sheets
+  // Finalize Registration and Session Logging to Google Sheets & Firestore
   const finalizeUserLogin = async (user: User, googleToken?: string) => {
     // Store user in local registered users list for persistence across sessions
     try {
@@ -127,8 +127,48 @@ export const LoginView: React.FC<LoginViewProps> = ({
         existing.unshift({ ...user, createdAt: new Date().toISOString().slice(0, 10) });
       }
       localStorage.setItem('cipl_registered_users', JSON.stringify(existing));
+
+      // Also ensure customer record exists for non-admin visitors in local storage
+      if (user.role !== 'admin' && user.email) {
+        const savedCust = localStorage.getItem('cipl_customers');
+        const custs: any[] = savedCust ? JSON.parse(savedCust) : [];
+        const cIdx = custs.findIndex((c: any) => c.email.toLowerCase() === user.email.toLowerCase());
+        const newCustObj = {
+          id: user.id || `cust-${Date.now()}`,
+          nameAr: user.name || 'زائر جديد',
+          nameFr: user.name || 'Nouveau Visiteur',
+          avatar: user.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80',
+          cityAr: user.city || 'الدار البيضاء',
+          cityFr: user.city || 'Casablanca',
+          countryAr: 'المغرب',
+          countryFr: 'Maroc',
+          email: user.email,
+          phone: user.phone || '+212 600 000000',
+          totalPurchasesMAD: 0,
+          purchasesCount: 0,
+          favoriteArtists: ['محمد الجالي'],
+          favoriteStyles: ['تجريدي معاصر'],
+          budgetMAD: 50000,
+          lastContactDate: new Date().toISOString().slice(0, 10),
+          tags: ['عضو مسجل عبر المنصة'],
+          notesAr: user.bio || 'حساب زائر مسجل عبر المنصة.',
+          notesFr: user.bio || 'Compte visiteur enregistré via la plateforme.'
+        };
+
+        if (cIdx >= 0) {
+          custs[cIdx] = { ...custs[cIdx], nameAr: user.name, nameFr: user.name, phone: user.phone || custs[cIdx].phone };
+        } else {
+          custs.unshift(newCustObj);
+        }
+        localStorage.setItem('cipl_customers', JSON.stringify(custs));
+
+        // Save to Firestore as well
+        await saveCustomerToFirestore(newCustObj);
+      }
+
+      await saveUserToFirestore(user);
     } catch (e) {
-      console.warn('Failed to save user to cipl_registered_users:', e);
+      console.warn('Failed to save user or customer locally/Firestore:', e);
     }
 
     // Log user registration if coming from verification/signup
